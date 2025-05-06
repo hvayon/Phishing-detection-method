@@ -42,8 +42,17 @@ IPV6_PATTERN = re.compile(r'\b(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4})\b')
 # Паттерн для сервисов сокращения ссылок
 SHORTENERS_PATTERN = re.compile(
     r'(?:https?://)?(?:www\.)?'
-    r'(?:bit\.ly|goo\.gl|tinyurl\.com|ow\.ly|t\.co|is\.gd|buff\.ly|adf\.ly|'
-    r'shorte\.st|cutt\.ly|tiny\.cc|bit\.do|clck\.ru|qps\.ru|v\.gd)'
+    r'(?:'
+    r'bit\.ly|goo\.gl|shorte\.st|go2l\.ink|x\.co|ow\.ly|t\.co|tinyurl|tr\.im|is\.gd|cli\.gs|'
+    r'yfrog\.com|migre\.me|ff\.im|tiny\.cc|url4\.eu|twit\.ac|su\.pr|twurl\.nl|snipurl\.com|'
+    r'short\.to|BudURL\.com|ping\.fm|post\.ly|Just\.as|bkite\.com|snipr\.com|fic\.kr|loopt\.us|'
+    r'doiop\.com|short\.ie|kl\.am|wp\.me|rubyurl\.com|om\.ly|to\.ly|bit\.do|lnkd\.in|'
+    r'db\.tt|qr\.ae|adf\.ly|cur\.lv|ity\.im|q\.gs|po\.st|bc\.vc|twitthis\.com|u\.to|j\.mp|'
+    r'buzurl\.com|cutt\.us|u\.bb|yourls\.org|prettylinkpro\.com|scrnch\.me|filoops\.info|'
+    r'vzturl\.com|qr\.net|1url\.com|tweez\.me|v\.gd|link\.zip\.net|buff\.ly|cutt\.ly|'
+    r'clck\.ru|qps\.ru|shrturi\.com|rebrand\.ly|trim\.im|p\.tk\.ru|soo\.gd|shorturl\.at|'
+    r'n9\.cl|click\.ru|lnk\.su|0x0\.st|zws\.im|s2r\.lnk|alturl\.com|tiny\.one|short\.io'
+    r')'
     r'(?:/.*)?$',
     re.IGNORECASE
 )
@@ -84,6 +93,20 @@ def is_shortened_url(url: str) -> int:
     """Проверка использования сервисов сокращения ссылок."""
     return int(bool(SHORTENERS_PATTERN.search(url)))
 
+def count_redirection(page):
+    """Количество редиректов"""
+    return len(page.history)
+
+def count_external_redirection(page, domain):
+    """Количество внешних перенаправлений"""
+    count = 0
+    if len(page.history) == 0:
+        return 0
+    else:
+        for i, response in enumerate(page.history,1):
+            if domain.lower() not in response.url.lower():
+                count+=1
+            return count
 
 def count_special_chars(s: str, chars: str) -> int:
     """Вспомогательная функция для подсчёта специальных символов."""
@@ -137,6 +160,11 @@ def count_equal(base_url: str) -> int:
     return base_url.count('=')
 
 
+def count_percentage(base_url: str) -> int:
+    """Подсчёт символов '%' в URL."""
+    return base_url.count('%')
+
+
 def count_exclamation(base_url: str) -> int:
     """Подсчёт символов '?' в URL."""
     return base_url.count('?')
@@ -181,6 +209,22 @@ def count_http_token(url_path: str) -> int:
     """Подсчёт вхождений 'http' в пути URL."""
     return url_path.lower().count('http')
 
+def port(url):
+    """ Регулярное выражение с учетом IPv4, IPv6 и валидных портов (1-65535) """
+    pattern = r"""
+        ^(?:[a-zA-Z][a-zA-Z0-9+.-]*://)?  # Схема (опционально)
+        (?:[^/@:]+@)?                      # Логин/пароль (опционально)
+        (?:                                
+          (?:\[[a-fA-F0-9:.]+\]) |        # IPv6 в квадратных скобках
+          ([a-zA-Z0-9\-._~%]+)            # Домен или IPv4
+        )
+        :(?!\d+/)                          # Исключить двоеточия в пути
+        ([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])  # Порт 1-65535
+        (?:/|$)                            # Конец URL или путь
+    """
+    if re.search(pattern, url, re.VERBOSE | re.IGNORECASE):
+        return 1
+    return 0
 
 def check_ssl_certificate(domain: str) -> tuple[bool, str]:
     """
@@ -282,17 +326,20 @@ def phish_hints(url_path: str) -> int:
     return sum(lower_path.count(hint) for hint in HINTS)
 
 
-def tld_in_path(url: str) -> int:
+def tld_in_path(tld: str, path: str) -> int:
     """Проверка наличия TLD в пути URL."""
-    ext = extract(url)
-    path = urlparse(url).path.lower()
-    return int(bool(re.search(rf'\b{ext.suffix}\b', path)))
+    tld_lower = tld.lower()
+    path_lower = path.lower()
+    escaped_tld = re.escape(tld_lower)
+    return int(bool(re.search(rf'\b{escaped_tld}\b', path_lower)))
 
 
-def tld_in_subdomain(url: str) -> int:
+def tld_in_subdomain(tld: str, subdomain: str) -> int:
     """Проверка наличия TLD в поддомене."""
-    ext = extract(url)
-    return int(ext.suffix in ext.subdomain.split('.'))
+    tld_lower = tld.lower()
+    subdomain_lower = subdomain.lower()
+    subdomain_parts = subdomain_lower.split('.')
+    return int(tld_lower in subdomain_parts)
 
 
 def count_redirection(page) -> int:
@@ -317,7 +364,7 @@ def random_domain(domain: str) -> int:
     return int(nlp_manager.is_random_domain(domain))
 
 
-def detect_char_repeats(
+def char_repeat(
         words: List[str],
         min_length: int = 2,
         max_length: int = 5,
@@ -360,20 +407,15 @@ def punycode(url: str) -> int:
     return int(url.lower().startswith(('http://xn--', 'https://xn--')))
 
 
-def brand_imitation(url: str) -> int:
+def brand_imitation(domain: str, path: str) -> int:
     """Проверка на имитацию известных брендов."""
-    ext = extract(url)
-    components = [
-        ext.subdomain.lower(),
-        ext.domain.lower(),
-        urlparse(url).path.lower()
-    ]
-
+    domain_lower = domain.lower()
+    path_lower = path.lower()
     for brand in BRAND_KEYWORDS:
-        if any(brand in part for part in components):
-            return int(ext.domain.lower() != brand)  # 1 если домен не совпадает с брендом
+        brand_lower = brand.lower()
+        if brand_lower in domain_lower or brand_lower in path_lower:
+            return int(domain_lower != brand_lower)
     return 0
-
 
 def count_subdomain(url: str) -> int:
     """Подсчёт количества поддоменов."""

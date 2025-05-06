@@ -1,7 +1,7 @@
+import os
 import re
 import time
 from datetime import datetime
-import os
 
 import requests
 import whois
@@ -10,9 +10,7 @@ from dotenv import load_dotenv
 # Загрузить переменные из .env
 load_dotenv()
 
-######################################################
-#           Извлекаем внешние признаки сайта          #
-######################################################
+# Извлекаем внешние признаки сайта
 
 # Функция проверяет, зарегистрирован ли домен сайта в WHOIS
 def whois_registered_domain(domain):
@@ -97,10 +95,8 @@ def page_rank(domain):
     try:
         # Пример API SimilarWeb (нужен API-ключ)
         api_key = os.getenv("API_KEY")  # Безопасный способ
-        print(api_key)
         url = f"https://api.similarweb.com/v1/similar-rank/{domain}/rank?api_key={api_key}"
         response = requests.get(url).json()
-        print(response)
         return int(response['similar_rank']['rank'])
     except:
         return 0
@@ -108,7 +104,6 @@ def page_rank(domain):
 
 # Проверка наличия NS-записей в домен
 import dns.resolver
-
 
 def dns_record(domain):
     try:
@@ -125,6 +120,7 @@ def dns_record(domain):
         return 1
     except:
         return 1
+
 
 # def page_rank(short_url):
 #     try:
@@ -159,12 +155,12 @@ def dns_record(domain):
 
 # тесты
 # удалить web_traffic из dataset
-if __name__ == "__main__":
-    domain = "google.ru"  # Замените на нужный домен
+# if __name__ == "__main__":
+#     domain = "google.ru"  # Замените на нужный домен
     # result = whois_registered_domain(domain)
     # result = domain_registration_length(domain)
     # result = domain_age(domain)
-    result = page_rank(domain) # тут rank
+    # result = page_rank(domain) # тут rank
     # result = dns_record(domain)
 
-    print(result)
+    # print(result)
