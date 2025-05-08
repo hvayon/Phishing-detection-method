@@ -142,7 +142,7 @@ def get_ip_country(ip):
         response = requests.get(f"http://ip-api.com/json/{ip}", timeout=15)
         if response.status_code == 200:
             data = response.json()
-            print(data)
+            # print(data)
             return data.get('countryCode', '').upper() if data.get('status') == 'success' else None
         return None
     except:
@@ -181,7 +181,6 @@ def ip_country_match(domain):
     """Проверяет соответствие страны IP-адреса и WHOIS-регистрации.
        Возвращает 1 при несоответствии или ошибке, 0 при совпадении."""
     ip = get_domain_ip(domain)
-    print(ip)
     if not ip:
         return 1
 

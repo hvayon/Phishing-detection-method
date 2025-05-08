@@ -1,24 +1,32 @@
-import requests
+import csv
+import logging
+import os
+import re
+import urllib.parse
+import urllib.parse
+from functools import wraps
+from urllib.parse import urlparse
+import pandas as pd
+import time
+from tqdm import tqdm
+import pickle
+import pandas as pd
+import tldextract
+from bs4 import BeautifulSoup
+from requests.exceptions import RequestException, Timeout
 
+import src.features.content_features_extractor as confe
 import src.features.external_features_extractor as extfe
 import src.features.url_features_extractor as urlfe
-import src.features.content_features_extractor as confe
-import tldextract
-import urllib.parse
-import re
-from requests.exceptions import RequestException, Timeout
-import logging
-from functools import wraps
-
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def deadline(timeout):
     """Декоратор для ограничения времени выполнения функции"""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -30,8 +38,11 @@ def deadline(timeout):
             except Exception as e:
                 logger.error(f"Unexpected error in {func.__name__}: {str(e)}")
                 return False, None, None
+
         return wrapper
+
     return decorator
+
 
 @deadline(5)
 def is_url_accessible(url: str) -> tuple:
@@ -79,6 +90,95 @@ def is_url_accessible(url: str) -> tuple:
     logger.warning(f"All access attempts failed for {url}")
     return False, None, None
 
+
+def process_dataset(input_file, output_file, max_urls=None, checkpoint_interval=2):
+    """
+    Обрабатывает датасет URL, извлекает характеристики и сохраняет результат
+
+    Параметры:
+        input_file (str): путь к входному CSV файлу с URL
+        output_file (str): путь для сохранения результата
+        max_urls (int): максимальное количество URL для обработки (None для всех)
+        checkpoint_interval (int): частота сохранения промежуточных результатов
+    """
+    # Загружаем исходный датасет
+    df = pd.read_csv(input_file, sep=';')
+
+    # Ограничиваем количество URL, если нужно
+    if max_urls is not None and max_urls < len(df):
+        df = df.sample(max_urls, random_state=42)
+
+    # Создаем список для хранения результатов
+    results = []
+    failed_urls = []
+
+    # Обрабатываем каждый URL с прогресс-баром
+    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Processing URLs"):
+        url = row['url']
+        status = row['status']
+
+        try:
+            # Извлекаем характеристики
+            features = extract_features(url, status)
+
+            if features is not None:
+                # Создаем новую запись с url в начале и status в конце
+                new_entry = {'url': url}
+                new_entry.update(features)
+                new_entry['status'] = status
+                results.append(new_entry)
+            else:
+                failed_urls.append(url)
+
+            # Сохраняем промежуточные результаты
+            if (idx + 1) % checkpoint_interval == 0:
+                save_checkpoint(results, failed_urls, output_file)
+
+            # Небольшая задержка для избежания блокировки
+            time.sleep(0.5)
+
+        except Exception as e:
+            print(f"Error processing {url}: {str(e)}")
+            failed_urls.append(url)
+            continue
+
+    # Сохраняем финальные результаты
+    save_final_results(results, failed_urls, output_file)
+
+    return results, failed_urls
+
+
+def save_checkpoint(results, failed_urls, output_file):
+    """Сохраняет промежуточные результаты"""
+    if len(results) > 0:
+        checkpoint_file = output_file.replace('.csv', f'_checkpoint_{len(results)}.pkl')
+        with open(checkpoint_file, 'wb') as f:
+            pickle.dump({'results': results, 'failed_urls': failed_urls}, f)
+
+
+def save_final_results(results, failed_urls, output_file):
+    """Сохраняет финальные результаты в CSV и информацию о неудачных URL"""
+    if len(results) > 0:
+        # Создаем DataFrame из результатов
+        result_df = pd.DataFrame(results)
+
+        # Сохраняем основной датасет
+        result_df.to_csv(output_file, index=False)
+        print(f"Successfully processed {len(result_df)} URLs. Saved to {output_file}")
+
+    if len(failed_urls) > 0:
+        # Сохраняем список неудачных URL
+        failed_df = pd.DataFrame({'failed_urls': failed_urls})
+        failed_file = output_file.replace('.csv', '_failed.csv')
+        failed_df.to_csv(failed_file, index=False)
+        print(f"Failed to process {len(failed_urls)} URLs. List saved to {failed_file}")
+
+
+def load_checkpoint(checkpoint_file):
+    """Загружает промежуточные результаты из checkpoint файла"""
+    with open(checkpoint_file, 'rb') as f:
+        data = pickle.load(f)
+    return data['results'], data['failed_urls']
 
 # процесс извлечения данных
 def extract_data_from_url(hostname, content, domain, Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title,
@@ -415,8 +515,8 @@ def extract_features(url, status):
             'ratio_intErrors': confe.internal_errors(Href, Link, Media, Form, CSS, Favicon),  # Заглушка
             'ratio_extErrors': confe.external_errors(Href, Link, Media, Form, CSS, Favicon),  # Заглушка
             'login_form': confe.login_form(Form),  # Заглушка
-            'external_favicon':confe.external_favicon(Favicon),  # Заглушка
-            'links_in_tags':confe.links_in_tags(Link),  # Заглушка
+            'external_favicon': confe.external_favicon(Favicon),  # Заглушка
+            'links_in_tags': confe.links_in_tags(Link),  # Заглушка
             'submit_email': confe.submitting_to_email(Form),  # Заглушка
             'ratio_intMedia': confe.internal_media(Media),  # Заглушка
             'ratio_extMedia': confe.external_media(Media),  # Заглушка
@@ -449,11 +549,20 @@ def extract_features(url, status):
         return features
     return None
 
+
 def get_domain(url):
     o = urllib.parse.urlsplit(url)
     return o.hostname, tldextract.extract(url).domain, o.path
 
+
 if __name__ == "__main__":
-    url = "https://vk.ru"  # Замените на нужный домен
-    all_features = extract_features(url, "legitimate")
-    print(all_features)
+    # url = "https://vk.ru"  # Замените на нужный домен
+    # all_features = extract_features(url, "legitimate")
+    # print(all_features)
+
+    # Пример использования
+    input_csv = "../../phish-collector/data/test.csv"
+    output_csv = "../../phish-collector/data/dataset_with_features.csv"
+
+    # Обрабатываем датасет
+    results, failed_urls = process_dataset(input_csv, output_csv)

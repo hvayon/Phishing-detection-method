@@ -17,7 +17,9 @@ from src.features.nlp_class import DomainRandomnessChecker
 # Набор подстрок, характерных для фишинговых URL (в нижнем регистре)
 HINTS = {
     'wp', 'login', 'admin', 'secure', 'verify', 'oauth',
-    'account', 'update', 'confirm', 'ebay', 'paypal', 'signin'
+    'account', 'update', 'confirm', 'ebay', 'paypal', 'signin',
+    'includes', 'content', 'site', 'images', 'js', 'alibaba', 'css',
+    'myaccount', 'dropbox', 'themes', 'plugins', 'signin', 'view'
 }
 
 # Загрузка списка брендов для проверки подделок
