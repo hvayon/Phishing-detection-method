@@ -343,6 +343,20 @@ def count_external_redirection(page, domain: str) -> int:
         if urlparse(resp.url).netloc.lower().replace("www.", "") != target_domain
     )
 
+def check_www(words_raw):
+    count = 0
+    for word in words_raw:
+        if not word.find('www') == -1:
+            count += 1
+    return count
+
+
+def check_com(words_raw):
+    count = 0
+    for word in words_raw:
+        if not word.find('com') == -1:
+            count += 1
+    return count
 
 def random_domain(domain: str) -> int:
     """Проверка домена на случайность с использованием NLP."""
