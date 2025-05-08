@@ -3,8 +3,11 @@ import re
 import time
 from datetime import datetime
 
+import socket
 import requests
 import whois
+import pycountry
+
 from dotenv import load_dotenv
 
 # Загрузить переменные из .env
@@ -121,46 +124,84 @@ def dns_record(domain):
     except:
         return 1
 
+def get_domain_ip(domain):
+    """Получает IPv4-адрес домена."""
+    try:
+        return socket.gethostbyname(domain)
+    except (socket.gaierror, socket.herror):
+        return None
+    except:
+        return None
 
-# def page_rank(short_url):
-#     try:
-#         # Кодирование URL и формирование безопасного запроса
-#         encoded_url = quote(short_url)
-#         url = f"http://data.alexa.com/data?cli=10&dat=s&url={encoded_url}"
-#
-#         # Создание запроса с заголовками (некоторые сайты требуют User-Agent)
-#         request = urllib.request.Request(
-#             url,
-#             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-#         )
-#
-#         # Выполнение запроса с таймаутом
-#         with urllib.request.urlopen(request, timeout=10) as response:
-#             soup = BeautifulSoup(response.read(), 'xml')
-#
-#         # Поиск данных с проверкой наличия тега и атрибута
-#         if (reach_tag := soup.find('REACH')) and reach_tag.has_attr('RANK'):
-#             return int(reach_tag['RANK'])
-#         return 0
-#
-#     except (URLError, HTTPError, ValueError, TypeError, AttributeError):
-#         # Обработка основных ошибок:
-#         # - Сетевые проблемы
-#         # - Проблемы конвертации данных
-#         # - Отсутствие атрибутов/тегов
-#         return 0
-#     except Exception as e:
-#         # Общая обработка для непредвиденных исключений (можно добавить логирование)
-#         return 0
+
+def get_ip_country(ip):
+    """Определяет страну по IP с помощью API ip-api.com."""
+    if not ip:
+        return None
+    try:
+        response = requests.get(f"http://ip-api.com/json/{ip}", timeout=15)
+        if response.status_code == 200:
+            data = response.json()
+            print(data)
+            return data.get('countryCode', '').upper() if data.get('status') == 'success' else None
+        return None
+    except:
+        return None
+
+
+def get_whois_country(domain):
+    """Извлекает страну регистрации домена из WHOIS-данных."""
+    try:
+        domain_info = whois.whois(domain)
+        country = domain_info.country
+
+        # Обработка списка стран
+        if isinstance(country, list):
+            country = country[0] if country else None
+
+        if not country:
+            return None
+
+        # Проверка на двухбуквенный код
+        if len(str(country)) == 2 and str(country).isalpha():
+            return str(country).upper()
+
+        # Конвертация названия в код
+        try:
+            match = pycountry.countries.search_fuzzy(str(country))
+            print(match)
+            return match[0].alpha_2.upper() if match else None
+        except LookupError:
+            return None
+    except:
+        return None
+
+
+def ip_country_match(domain):
+    """Проверяет соответствие страны IP-адреса и WHOIS-регистрации.
+       Возвращает 1 при несоответствии или ошибке, 0 при совпадении."""
+    ip = get_domain_ip(domain)
+    print(ip)
+    if not ip:
+        return 1
+
+    ip_country = get_ip_country(ip)
+    if not ip_country:
+        return 1
+
+    whois_country = get_whois_country(domain)
+    if not whois_country:
+        return 1
+
+    return 0 if ip_country == whois_country else 1
+
 
 # тесты
 # удалить web_traffic из dataset
-# if __name__ == "__main__":
-#     domain = "google.ru"  # Замените на нужный домен
-    # result = whois_registered_domain(domain)
-    # result = domain_registration_length(domain)
-    # result = domain_age(domain)
-    # result = page_rank(domain) # тут rank
-    # result = dns_record(domain)
-
-    # print(result)
+if __name__ == "__main__":
+    domain = "google.com"  # Замените на нужный домен
+    res = get_whois_country(domain)
+    result = ip_country_match(domain)
+    #
+    print(res)
+    print(result)

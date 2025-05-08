@@ -93,21 +93,6 @@ def is_shortened_url(url: str) -> int:
     """Проверка использования сервисов сокращения ссылок."""
     return int(bool(SHORTENERS_PATTERN.search(url)))
 
-def count_redirection(page):
-    """Количество редиректов"""
-    return len(page.history)
-
-def count_external_redirection(page, domain):
-    """Количество внешних перенаправлений"""
-    count = 0
-    if len(page.history) == 0:
-        return 0
-    else:
-        for i, response in enumerate(page.history,1):
-            if domain.lower() not in response.url.lower():
-                count+=1
-            return count
-
 def count_special_chars(s: str, chars: str) -> int:
     """Вспомогательная функция для подсчёта специальных символов."""
     return sum(s.count(c) for c in chars)
@@ -406,6 +391,13 @@ def punycode(url: str) -> int:
     """Обнаружение Punycode в URL."""
     return int(url.lower().startswith(('http://xn--', 'https://xn--')))
 
+
+def domain_in_brand(domain):
+    """Проверяет точное совпадение домена с брендом."""
+    if domain in BRAND_KEYWORDS:
+        return 0
+    else:
+        return 1
 
 def brand_imitation(domain: str, path: str) -> int:
     """Проверка на имитацию известных брендов."""

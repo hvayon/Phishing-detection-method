@@ -10,8 +10,7 @@ import tldextract
 nltk.download('words', quiet=True)
 nltk.download('brown', quiet=True)
 
-# Фикс для SSL
-ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=certifi.where())
+# ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=certifi.where())
 
 class DomainRandomnessChecker:
     def __init__(self):

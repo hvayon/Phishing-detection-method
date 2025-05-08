@@ -1,7 +1,8 @@
 import requests
 
-import src.features.external_features_extractor as efe
-import src.features.url_features_extractor as ufe
+import src.features.external_features_extractor as extfe
+import src.features.url_features_extractor as urlfe
+import src.features.content_features_extractor as confe
 import tldextract
 import urllib.parse
 import re
@@ -159,7 +160,7 @@ def extract_data_from_url(hostname, content, domain, Href, Link, Anchor, Media, 
             Media['externals'].append(i_frame['src'])
 
     # collect all link tags
-    for link in soup.findAll('link', href=True):
+    for link in soup.find_all('link', href=True):
         dots = [x.start(0) for x in re.finditer('\.', link['href'])]
         if hostname in link['href'] or domain in link['href'] or len(dots) == 1 or not link['href'].startswith('http'):
             if not link['href'].startswith('http'):
@@ -220,7 +221,7 @@ def extract_data_from_url(hostname, content, domain, Href, Link, Anchor, Media, 
             continue
 
     # collect all form actions
-    for form in soup.findAll('form', action=True):
+    for form in soup.find_all('form', action=True):
         dots = [x.start(0) for x in re.finditer('\.', form['action'])]
         if hostname in form['action'] or domain in form['action'] or len(dots) == 1 or not form['action'].startswith(
                 'http'):
@@ -250,7 +251,7 @@ def extract_data_from_url(hostname, content, domain, Href, Link, Anchor, Media, 
             else:
                 Favicon['externals'].append(head.link['href'])
 
-        for head.link in soup.findAll('link', {'href': True, 'rel': True}):
+        for head.link in soup.find_all('link', {'href': True, 'rel': True}):
             isicon = False
             if isinstance(head.link['rel'], list):
                 for e_rel in head.link['rel']:
@@ -338,54 +339,54 @@ def extract_features(url, status):
         parsed = urlparse(url)
         scheme = parsed.scheme
 
-        #Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text = extract_data_from_url(hostname, content,
-                                                                                                   # domain, Href, Link,
-                                                                                                   # Anchor, Media, Form,
-                                                                                                   # CSS, Favicon, IFrame,
-                                                                                                   # Title, Text)
+        Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text = extract_data_from_url(hostname, content,
+                                                                                                   domain, Href, Link,
+                                                                                                   Anchor, Media, Form,
+                                                                                                   CSS, Favicon, IFrame,
+                                                                                                   Title, Text)
 
         features = {
-            # URL-based features
+            # # # URL-based features
             'url': url,  # Временное поле, будет удалено
-            'length_url': ufe.url_length(url),
-            'length_hostname': ufe.url_length(hostname),
-            'ip': ufe.has_ip_address(url),
-            'url_dots': ufe.count_dots(url),
-            'url_hyphens': ufe.count_hyphens(url),
-            'url_at': ufe.count_at(url),
-            'url_qm': ufe.count_exclamation(url),
-            'url_and': ufe.count_and(url),
-            'url_or': ufe.count_or(url),  # Заглушка
-            'url_eq': ufe.count_equal(url),
-            'url_underscore': ufe.count_underscore(url),
-            'url_tilde': ufe.count_tilde(url),  # Заглушка
-            'url_percent': ufe.count_percentage(url),
-            'url_slash': ufe.count_slash(url),
-            'url_star': ufe.count_star(url),
-            'url_colon': ufe.count_colon(url),
-            'url_comma': ufe.count_comma(url),
-            'url_semicolumn': ufe.count_semicolumn(url),
-            'url_dollar': ufe.count_dollar(url),
-            'url_space': ufe.count_space(url),
+            'length_url': urlfe.url_length(url),
+            'length_hostname': urlfe.url_length(hostname),
+            'ip': urlfe.has_ip_address(url),
+            'url_dots': urlfe.count_dots(url),
+            'url_hyphens': urlfe.count_hyphens(url),
+            'url_at': urlfe.count_at(url),
+            'url_qm': urlfe.count_exclamation(url),
+            'url_and': urlfe.count_and(url),
+            'url_or': urlfe.count_or(url),  # Заглушка
+            'url_eq': urlfe.count_equal(url),
+            'url_underscore': urlfe.count_underscore(url),
+            'url_tilde': urlfe.count_tilde(url),  # Заглушка
+            'url_percent': urlfe.count_percentage(url),
+            'url_slash': urlfe.count_slash(url),
+            'url_star': urlfe.count_star(url),
+            'url_colon': urlfe.count_colon(url),
+            'url_comma': urlfe.count_comma(url),
+            'url_semicolumn': urlfe.count_semicolumn(url),
+            'url_dollar': urlfe.count_dollar(url),
+            'url_space': urlfe.count_space(url),
             # 'nb_www': 1 if 'www' in url else 0,
             # 'nb_com': 1 if '.com' in url else 0,
-            'url_dslash': ufe.count_double_slash(url),
-            'http_in_path': ufe.count_http_token(path),
-            'https_token': ufe.https_token(scheme),
-            'ratio_digits_url': ufe.ratio_digits(url),
-            'ratio_digits_host': ufe.ratio_digits(hostname),
-            'punycode': ufe.punycode(url),
-            'port': ufe.port(url),
-            'tld_in_path': ufe.tld_in_path(tld, path),
-            'tld_in_subdomain': ufe.tld_in_subdomain(tld, subdomain),
+            'url_dslash': urlfe.count_double_slash(url),
+            'http_in_path': urlfe.count_http_token(path),
+            'https_token': urlfe.https_token(scheme),
+            'ratio_digits_url': urlfe.ratio_digits(url),
+            'ratio_digits_host': urlfe.ratio_digits(hostname),
+            'punycode': urlfe.punycode(url),
+            'port': urlfe.port(url),
+            'tld_in_path': urlfe.tld_in_path(tld, path),
+            'tld_in_subdomain': urlfe.tld_in_subdomain(tld, subdomain),
             # 'abnormal_subdomain': 0,  # Заглушка
-            'url_subdomains': ufe.count_subdomain(url),
+            'url_subdomains': urlfe.count_subdomain(url),
             # 'prefix_suffix': 0,  # Заглушка (требует re)
-            'random_domain': ufe.random_domain(domain),
-            'shortening_service': ufe.is_shortened_url(url),
-            'path_extension': ufe.path_extension(url),
-            'url_redirection': ufe.count_redirection(page),  # требуется requests
-            'url_external_redirection': ufe.count_external_redirection(page, domain),  # требуется requests
+            'random_domain': urlfe.random_domain(domain),
+            'shortening_service': urlfe.is_shortened_url(url),
+            'path_extension': urlfe.path_extension(url),
+            'url_redirection': urlfe.count_redirection(page),  # требуется requests
+            'url_external_redirection': urlfe.count_external_redirection(page, domain),  # требуется requests
             # 'length_words_raw': ufe.length_word_raw(words_raw),  # Заглушка
             # 'char_repeat': 0,  # Заглушка
             # 'shortest_words_raw': 0,  # Заглушка
@@ -397,43 +398,47 @@ def extract_features(url, status):
             # 'avg_words_raw': 0.0,  # Заглушка
             # 'avg_word_host': 0.0,  # Заглушка
             # 'avg_word_path': 0.0,  # Заглушка
-            'phish_hints': ufe.phish_hints(url),  # Заглушка
-            # 'domain_in_brand': 0,  # Заглушка Доделать???
-            'brand_in_subdomain': ufe.brand_imitation(extracted_domain.domain,subdomain),  # Заглушка
-            'brand_in_path': ufe.brand_imitation(extracted_domain.domain,path),  # Заглушка
-            'suspicious_tld': ufe.suspicious_tld(tld),  # Заглушка (требует urlparse)
+            'phish_hints': urlfe.phish_hints(url),  # Заглушка
+            'domain_in_brand': urlfe.domain_in_brand(extracted_domain.domain),  # Заглушка Доделать???
+            'brand_in_subdomain': urlfe.brand_imitation(extracted_domain.domain, subdomain),  # Заглушка
+            'brand_in_path': urlfe.brand_imitation(extracted_domain.domain, path),  # Заглушка
+            'suspicious_tld': urlfe.suspicious_tld(tld),  # Заглушка (требует urlparse)
             # 'statistical_report': 0,  # Заглушка
-            'nb_hyperlinks': 0,  # Заглушка
-            'ratio_intHyperlinks': 0.0,  # Заглушка
-            'ratio_extHyperlinks': 0.0,  # Заглушка
-            'ratio_nullHyperlinks': 0.0,  # Заглушка
-            'nb_extCSS': 0,  # Заглушка
-            'ratio_intRedirection': 0.0,  # Заглушка
-            'ratio_extRedirection': 0.0,  # Заглушка
-            'ratio_intErrors': 0.0,  # Заглушка
-            'ratio_extErrors': 0.0,  # Заглушка
-            'login_form': 0,  # Заглушка
-            'external_favicon': 0,  # Заглушка
-            'links_in_tags': 0,  # Заглушка
-            'submit_email': 0,  # Заглушка
-            'ratio_intMedia': 0.0,  # Заглушка
-            'ratio_extMedia': 0.0,  # Заглушка
-            'sfh': 0,  # Заглушка
-            'iframe': 0,  # Заглушка
-            'popup_window': 0,  # Заглушка
-            'safe_anchor': 0,  # Заглушка
-            'onmouseover': 0,  # Заглушка
-            'right_clic': 0,  # Заглушка
-            'empty_title': 0,  # Заглушка
-            'domain_in_title': 0,  # Заглушка
-            'domain_with_copyright': 0,  # Заглушка
-            'whois_registered_domain': efe.whois_registered_domain(url),
-            'domain_registration_length': efe.domain_registration_length(url),
-            'domain_age': efe.domain_age(url),
+            # # # content-based features
+            'url_hyperlinks': confe.url_hyperlinks(Href, Link, Media, Form, CSS, Favicon),  # Заглушка
+            'ratio_intHyperlinks': confe.internal_hyperlinks(Href, Link, Media, Form, CSS, Favicon),  # Заглушка
+            'ratio_extHyperlinks': confe.external_hyperlinks(Href, Link, Media, Form, CSS, Favicon),  # Заглушка
+            'ratio_nullHyperlinks': confe.null_hyperlinks(hostname, Href, Link, Media, Form, CSS, Favicon),  # Заглушка
+            'url_extCSS': confe.external_css(CSS),  # Заглушка
+            'ratio_intRedirection': confe.internal_redirection(Href, Link, Media, Form, CSS, Favicon),  # Заглушка
+            'ratio_extRedirection': confe.external_redirection(Href, Link, Media, Form, CSS, Favicon),  # Заглушка
+            'ratio_intErrors': confe.internal_errors(Href, Link, Media, Form, CSS, Favicon),  # Заглушка
+            'ratio_extErrors': confe.external_errors(Href, Link, Media, Form, CSS, Favicon),  # Заглушка
+            'login_form': confe.login_form(Form),  # Заглушка
+            'external_favicon':confe.external_favicon(Favicon),  # Заглушка
+            'links_in_tags':confe.links_in_tags(Link),  # Заглушка
+            'submit_email': confe.submitting_to_email(Form),  # Заглушка
+            'ratio_intMedia': confe.internal_media(Media),  # Заглушка
+            'ratio_extMedia': confe.external_media(Media),  # Заглушка
+            #  # additional content-based features
+            # 'sfh': 0,  # Заглушка
+            # 'iframe': 0,  # Заглушка
+            'popup_window': confe.popup_window(Text),  # Заглушка
+            # 'safe_anchor': 0,  # Заглушка
+            'onmouseover': confe.onmouseover(Text),  # Заглушка
+            'right_clic': confe.right_clic(Text),  # Заглушка
+            'empty_title': confe.empty_title(Title),  # Заглушка
+            'domain_in_title': confe.domain_in_title(extracted_domain.domain, Title),  # Заглушка
+            # 'domain_with_copyright': 0,  # Заглушка
+            # # # внешние признаки
+            'whois_registered_domain': extfe.whois_registered_domain(url),
+            'domain_registration_length': extfe.domain_registration_length(url),
+            'domain_age': extfe.domain_age(url),
             # 'web_traffic': 0,  # Заглушка
-            'dns_record': efe.dns_record(url),
+            'dns_record': extfe.dns_record(url),
             # 'google_index': 0,  # Заглушка (требует check_google_index)
-            'page_rank': efe.page_rank(url),
+            'page_rank': extfe.page_rank(url),
+            'ip_country_match': extfe.ip_country_match(domain),
             'status': 0  # УДАЛИТЬ
         }
 
@@ -448,107 +453,7 @@ def get_domain(url):
     o = urllib.parse.urlsplit(url)
     return o.hostname, tldextract.extract(url).domain, o.path
 
-# def extract_features(url):
-#     features = {
-#         # URL-based features
-#         'url': url,  # Временное поле, будет удалено
-#         'length_url': ufe.url_length(url),
-#         # 'length_hostname': 0,  # Заглушка (требует urlparse)
-#         'ip': 0,  # Заглушка (требует re)
-#         'nb_dots': url.count('.'),
-#         'nb_hyphens': url.count('-'),
-#         'nb_at': url.count('@'),
-#         'nb_qm': url.count('?'),
-#         'nb_and': url.count('&'),
-#         'nb_or': 0,  # Заглушка
-#         'nb_eq': url.count('='),
-#         'nb_underscore': url.count('_'),
-#         'nb_tilde': 0,  # Заглушка
-#         'nb_percent': url.count('%'),
-#         'nb_slash': url.count('/'),
-#         'nb_star': 0,  # Заглушка
-#         'nb_colon': url.count(':'),
-#         'nb_comma': 0,  # Заглушка
-#         'nb_semicolumn': 0,  # Заглушка
-#         'nb_dollar': 0,  # Заглушка
-#         'nb_space': 0,  # Заглушка
-#         'nb_www': 1 if 'www' in url else 0,
-#         'nb_com': 1 if '.com' in url else 0,
-#         'nb_dslash': 0,  # Заглушка
-#         'http_in_path': 0,  # Заглушка (требует urlparse)
-#         'https_token': 1 if url.startswith('https') else 0,
-#         'ratio_digits_url': url.count('0') / len(url) if len(url) > 0 else 0.0,
-#         'ratio_digits_host': 0.0,  # Заглушка (требует urlparse)
-#         'punycode': 1 if 'xn--' in url else 0,
-#         'port': 0,  # Заглушка (требует urlparse)
-#         'tld_in_path': 0,  # Заглушка (требует urlparse)
-#         'tld_in_subdomain': 0,  # Заглушка
-#         'abnormal_subdomain': 0,  # Заглушка
-#         'nb_subdomains': 0,  # Заглушка (требует urlparse)
-#         'prefix_suffix': 0,  # Заглушка (требует re)
-#         'random_domain': 0,  # Заглушка
-#         'shortening_service': 1 if any(s in url for s in ['bit.ly', 'goo.gl']) else 0,
-#         'path_extension': 0,  # Заглушка (требует urlparse)
-#         'nb_redirection': 0,  # Заглушка
-#         'nb_external_redirection': 0,  # Заглушка
-#         'length_words_raw': 0,  # Заглушка
-#         'char_repeat': 0,  # Заглушка
-#         'shortest_words_raw': 0,  # Заглушка
-#         'shortest_word_host': 0,  # Заглушка
-#         'shortest_word_path': 0,  # Заглушка
-#         'longest_words_raw': 0,  # Заглушка
-#         'longest_word_host': 0,  # Заглушка
-#         'longest_word_path': 0,  # Заглушка
-#         'avg_words_raw': 0.0,  # Заглушка
-#         'avg_word_host': 0.0,  # Заглушка
-#         'avg_word_path': 0.0,  # Заглушка
-#         'phish_hints': 0,  # Заглушка
-#         'domain_in_brand': 0,  # Заглушка
-#         'brand_in_subdomain': 0,  # Заглушка
-#         'brand_in_path': 0,  # Заглушка
-#         'suspecious_tld': 0,  # Заглушка (требует urlparse)
-#         'statistical_report': 0,  # Заглушка
-#         'nb_hyperlinks': 0,  # Заглушка
-#         'ratio_intHyperlinks': 0.0,  # Заглушка
-#         'ratio_extHyperlinks': 0.0,  # Заглушка
-#         'ratio_nullHyperlinks': 0.0,  # Заглушка
-#         'nb_extCSS': 0,  # Заглушка
-#         'ratio_intRedirection': 0.0,  # Заглушка
-#         'ratio_extRedirection': 0.0,  # Заглушка
-#         'ratio_intErrors': 0.0,  # Заглушка
-#         'ratio_extErrors': 0.0,  # Заглушка
-#         'login_form': 0,  # Заглушка
-#         'external_favicon': 0,  # Заглушка
-#         'links_in_tags': 0,  # Заглушка
-#         'submit_email': 0,  # Заглушка
-#         'ratio_intMedia': 0.0,  # Заглушка
-#         'ratio_extMedia': 0.0,  # Заглушка
-#         'sfh': 0,  # Заглушка
-#         'iframe': 0,  # Заглушка
-#         'popup_window': 0,  # Заглушка
-#         'safe_anchor': 0,  # Заглушка
-#         'onmouseover': 0,  # Заглушка
-#         'right_clic': 0,  # Заглушка
-#         'empty_title': 0,  # Заглушка
-#         'domain_in_title': 0,  # Заглушка
-#         'domain_with_copyright': 0,  # Заглушка
-#         'whois_registered_domain': efe.whois_registered_domain(url),
-#         'domain_registration_length': efe.domain_registration_length(url),
-#         'domain_age': efe.domain_age(url),
-#         'web_traffic': 0,  # Заглушка
-#         'dns_record': efe.dns_record(url),
-#         'google_index': 0,  # Заглушка (требует check_google_index)
-#         'page_rank': efe.page_rank(url),
-#         'status': 0  # УДАЛИТЬ
-#     }
-#
-#     # Удаляем служебные поля
-#     del features['url']
-#     del features['status']
-#
-#     return features
-
 if __name__ == "__main__":
-    url = "https://nikulya.ru"  # Замените на нужный домен
+    url = "https://vk.ru"  # Замените на нужный домен
     all_features = extract_features(url, "legitimate")
     print(all_features)
